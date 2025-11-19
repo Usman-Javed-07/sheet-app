@@ -26,7 +26,7 @@ exports.getAllSheets = async (req, res) => {
     }
 
     let include = [
-      { model: "User", as: "creator" },
+      { model: User, as: "creator" },
       { model: Branch, as: "branch" },
     ];
 
@@ -87,7 +87,7 @@ exports.getSheetById = async (req, res) => {
 
     const sheet = await Sheet.findByPk(id, {
       include: [
-        { model: "User", as: "creator" },
+        { model: User, as: "creator" },
         { model: Branch, as: "branch" },
         { model: Team, as: "team" },
       ],

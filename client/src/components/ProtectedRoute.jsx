@@ -2,13 +2,13 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export const ProtectedRoute = ({ children, requiredRoles = [] }) => {
+export default function ProtectedRoute({ children, requiredRoles = [] }) {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -17,9 +17,9 @@ export const ProtectedRoute = ({ children, requiredRoles = [] }) => {
     return <Navigate to="/login" />;
   }
 
-  if (requiredRoles.length > 0 && !requiredRoles.includes(user?.role)) {
+  if (requiredRoles.length > 0 && !requiredRoles.includes(user?.role?.name)) {
     return <Navigate to="/dashboard" />;
   }
 
   return children;
-};
+}

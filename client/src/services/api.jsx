@@ -1,7 +1,8 @@
 import axios from "axios";
 
+// Use Vite env variable instead of process.env
 const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -118,6 +119,18 @@ export const branchesAPI = {
   delete: (id) => apiClient.delete(`/branches/${id}`),
   getUsers: (id, page, limit) =>
     apiClient.get(`/branches/${id}/users`, { params: { page, limit } }),
+};
+
+// Export grouped API object
+export const api = {
+  authAPI,
+  usersAPI,
+  sheetsAPI,
+  cellsAPI,
+  sharingAPI,
+  notificationsAPI,
+  logsAPI,
+  branchesAPI,
 };
 
 export default apiClient;
