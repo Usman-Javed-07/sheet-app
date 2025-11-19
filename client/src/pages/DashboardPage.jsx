@@ -1,3 +1,4 @@
+// /mnt/data/DashboardPage.jsx
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { sheetsAPI, notificationsAPI } from "../services/api";
@@ -12,6 +13,8 @@ export const DashboardPage = () => {
     notifications: 0,
   });
   const [loading, setLoading] = useState(true);
+
+  const roleName = user?.roleName || user?.role?.name || user?.role || "";
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -51,7 +54,7 @@ export const DashboardPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-2">
             Welcome back, {user?.first_name}! You are logged in as{" "}
-            <span className="font-semibold capitalize">{user?.role}</span>.
+            <span className="font-semibold capitalize">{roleName}</span>.
           </p>
         </div>
 
@@ -69,7 +72,7 @@ export const DashboardPage = () => {
             value={stats.notifications}
             color="yellow"
           />
-          {(user?.role === "admin" || user?.role === "manager") && (
+          {(roleName === "admin" || roleName === "manager") && (
             <>
               <StatCard
                 icon={Users}
@@ -91,13 +94,13 @@ export const DashboardPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            <QuickStartCard role={user?.role} />
+            <QuickStartCard role={roleName} />
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             <RecentActivityCard />
-            <RoleInfoCard role={user?.role} />
+            <RoleInfoCard role={roleName} />
           </div>
         </div>
       </div>

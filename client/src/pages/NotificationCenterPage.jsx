@@ -1,3 +1,4 @@
+// /mnt/data/NotificationCenterPage.jsx
 import React, { useState, useEffect } from "react";
 import { Trash2, Check, CheckCircle2, Bell, Calendar } from "lucide-react";
 import Layout from "../components/Layout";
@@ -12,17 +13,28 @@ export default function NotificationCenterPage() {
 
   useEffect(() => {
     fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await api.notificationsAPI.getAll({
-        limit: 50,
-      });
+
+      // Map filter -> backend is_read param
+      let isReadParam;
+      if (filter === "unread") isReadParam = false;
+      else if (filter === "read") isReadParam = true;
+
+      const response = await api.notificationsAPI.getAll(
+        1, // page
+        50, // limit
+        isReadParam
+      );
+
       setNotifications(response.data.data);
       setError("");
     } catch (err) {
+      console.error(err);
       setError("Failed to fetch notifications: " + err.message);
     } finally {
       setLoading(false);
@@ -55,12 +67,6 @@ export default function NotificationCenterPage() {
       setError("Failed to delete notification: " + err.message);
     }
   };
-
-  const filteredNotifications = notifications.filter((notif) => {
-    if (filter === "unread") return !notif.is_read;
-    if (filter === "read") return notif.is_read;
-    return true;
-  });
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
@@ -130,8 +136,8 @@ export default function NotificationCenterPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredNotifications.length > 0 ? (
-              filteredNotifications.map((notif) => (
+            {notifications.length > 0 ? (
+              notifications.map((notif) => (
                 <div
                   key={notif.id}
                   className={`p-4 rounded-lg border transition ${

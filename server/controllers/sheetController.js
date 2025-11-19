@@ -1,3 +1,4 @@
+// /mnt/data/sheetController.js
 const {
   Sheet,
   SheetCell,
@@ -14,8 +15,53 @@ const {
 const { sendSheetSharedEmail } = require("../utils/emailService");
 const { Op } = require("sequelize");
 
+// ---------- Helper functions (local) ----------
+
+async function checkSheetAccess(userId, sheetId, userRole) {
+  const user = await User.findByPk(userId);
+  const sheet = await Sheet.findByPk(sheetId);
+
+  if (!sheet || !user) return false;
+
+  if (userRole === "admin") return true;
+  if (userRole === "manager") return sheet.branch_id === user.branch_id;
+  if (userRole === "team_lead") return sheet.team_id === user.team_id;
+
+  // User or Agent - check if shared
+  const share = await SheetShare.findOne({
+    where: { sheet_id: sheetId, shared_with_user_id: userId },
+  });
+
+  return !!share;
+}
+
+async function checkSheetEditAccess(userId, sheetId, userRole) {
+  const user = await User.findByPk(userId);
+  const sheet = await Sheet.findByPk(sheetId);
+
+  if (!sheet || !user) return false;
+
+  if (userRole === "admin") return true;
+  if (userRole === "manager") return sheet.branch_id === user.branch_id;
+  if (userRole === "team_lead") return sheet.team_id === user.team_id;
+  if (userRole === "user") {
+    const share = await SheetShare.findOne({
+      where: {
+        sheet_id: sheetId,
+        shared_with_user_id: userId,
+        permission_level: "edit",
+      },
+    });
+    return !!share;
+  }
+
+  return false;
+}
+
+// ---------- Controllers ----------
+
 // Get all sheets (with role-based filtering)
-exports.getAllSheets = async (req, res) => {
+async function getAllSheets(req, res) {
   try {
     const { page = 1, limit = 20, search, archived } = req.query;
     const offset = (page - 1) * limit;
@@ -78,10 +124,10 @@ exports.getAllSheets = async (req, res) => {
     console.error("Error fetching sheets:", error);
     res.status(500).json({ success: false, message: "Failed to fetch sheets" });
   }
-};
+}
 
 // Get sheet by ID with cells
-exports.getSheetById = async (req, res) => {
+async function getSheetById(req, res) {
   try {
     const { id } = req.params;
 
@@ -123,10 +169,10 @@ exports.getSheetById = async (req, res) => {
     console.error("Error fetching sheet:", error);
     res.status(500).json({ success: false, message: "Failed to fetch sheet" });
   }
-};
+}
 
 // Create sheet
-exports.createSheet = async (req, res) => {
+async function createSheet(req, res) {
   try {
     const {
       name,
@@ -213,10 +259,10 @@ exports.createSheet = async (req, res) => {
     console.error("Error creating sheet:", error);
     res.status(500).json({ success: false, message: "Failed to create sheet" });
   }
-};
+}
 
 // Update sheet
-exports.updateSheet = async (req, res) => {
+async function updateSheet(req, res) {
   try {
     const { id } = req.params;
     const { name, description, is_archived } = req.body;
@@ -280,10 +326,10 @@ exports.updateSheet = async (req, res) => {
     console.error("Error updating sheet:", error);
     res.status(500).json({ success: false, message: "Failed to update sheet" });
   }
-};
+}
 
 // Delete sheet
-exports.deleteSheet = async (req, res) => {
+async function deleteSheet(req, res) {
   try {
     const { id } = req.params;
 
@@ -322,57 +368,14 @@ exports.deleteSheet = async (req, res) => {
     console.error("Error deleting sheet:", error);
     res.status(500).json({ success: false, message: "Failed to delete sheet" });
   }
-};
-
-// Helper function to check sheet access
-exports.checkSheetAccess = async function (userId, sheetId, userRole) {
-  const user = await User.findByPk(userId);
-  const sheet = await Sheet.findByPk(sheetId);
-
-  if (!sheet || !user) return false;
-
-  if (userRole === "admin") return true;
-  if (userRole === "manager") return sheet.branch_id === user.branch_id;
-  if (userRole === "team_lead") return sheet.team_id === user.team_id;
-
-  // User or Agent - check if shared
-  const share = await SheetShare.findOne({
-    where: { sheet_id: sheetId, shared_with_user_id: userId },
-  });
-
-  return !!share;
-};
-
-// Helper function to check sheet edit access
-exports.checkSheetEditAccess = async function (userId, sheetId, userRole) {
-  const user = await User.findByPk(userId);
-  const sheet = await Sheet.findByPk(sheetId);
-
-  if (!sheet || !user) return false;
-
-  if (userRole === "admin") return true;
-  if (userRole === "manager") return sheet.branch_id === user.branch_id;
-  if (userRole === "team_lead") return sheet.team_id === user.team_id;
-  if (userRole === "user") {
-    const share = await SheetShare.findOne({
-      where: {
-        sheet_id: sheetId,
-        shared_with_user_id: userId,
-        permission_level: "edit",
-      },
-    });
-    return !!share;
-  }
-
-  return false;
-};
+}
 
 module.exports = {
-  getAllSheets: exports.getAllSheets,
-  getSheetById: exports.getSheetById,
-  createSheet: exports.createSheet,
-  updateSheet: exports.updateSheet,
-  deleteSheet: exports.deleteSheet,
-  checkSheetAccess: exports.checkSheetAccess,
-  checkSheetEditAccess: exports.checkSheetEditAccess,
+  getAllSheets,
+  getSheetById,
+  createSheet,
+  updateSheet,
+  deleteSheet,
+  checkSheetAccess,
+  checkSheetEditAccess,
 };

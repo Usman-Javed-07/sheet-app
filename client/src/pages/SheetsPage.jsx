@@ -1,8 +1,9 @@
+// /mnt/data/SheetsPage.jsx
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { sheetsAPI } from "../services/api";
-import { FileText, Plus, Search, Trash2 } from "lucide-react";
+import { FileText, Plus, Search } from "lucide-react";
 import Layout from "../components/Layout";
 
 export const SheetsPage = () => {
@@ -12,6 +13,8 @@ export const SheetsPage = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  const roleName = user?.roleName || user?.role?.name || user?.role || "";
 
   useEffect(() => {
     const fetchSheets = async () => {
@@ -30,7 +33,7 @@ export const SheetsPage = () => {
     fetchSheets();
   }, [page, search]);
 
-  const canCreate = ["admin", "manager", "team_lead"].includes(user?.role);
+  const canCreate = ["admin", "manager", "team_lead"].includes(roleName);
 
   return (
     <Layout>

@@ -1,5 +1,6 @@
+// /mnt/data/ActivityLogsPage.jsx
 import React, { useState, useEffect } from "react";
-import { Calendar, User, FileText, Filter, Search } from "lucide-react";
+import { Calendar, User, FileText, Search } from "lucide-react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
 import { formatDistanceToNow } from "date-fns";
@@ -14,21 +15,27 @@ export default function ActivityLogsPage() {
 
   useEffect(() => {
     fetchLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, actionFilter]);
 
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const params = {
-        page,
-        limit: 20,
-      };
-      if (actionFilter) params.action = actionFilter;
 
-      const response = await api.logsAPI.getAll(params);
+      const response = await api.logsAPI.getAll(
+        page,
+        20, // limit
+        actionFilter || undefined,
+        undefined, // entityType
+        undefined, // userId
+        undefined, // startDate
+        undefined // endDate
+      );
+
       setLogs(response.data.data);
       setError("");
     } catch (err) {
+      console.error(err);
       setError("Failed to fetch activity logs: " + err.message);
     } finally {
       setLoading(false);
@@ -43,14 +50,6 @@ export default function ActivityLogsPage() {
   );
 
   const actionTypes = ["create", "update", "delete", "read"];
-  const entityTypes = [
-    "sheet",
-    "user",
-    "branch",
-    "team",
-    "sheet_cell",
-    "sheet_share",
-  ];
 
   return (
     <Layout>
@@ -127,7 +126,9 @@ export default function ActivityLogsPage() {
                             <Calendar size={16} className="text-gray-400" />
                             <div>
                               <div className="font-medium">
-                                {new Date(log.created_at).toLocaleDateString()}
+                                {new Date(
+                                  log.created_at
+                                ).toLocaleDateString()}
                               </div>
                               <div className="text-xs text-gray-500">
                                 {formatDistanceToNow(new Date(log.created_at), {

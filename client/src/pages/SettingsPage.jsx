@@ -1,3 +1,4 @@
+// /mnt/data/SettingsPage.jsx
 import React, { useState, useEffect } from "react";
 import { Save, Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react";
 import Layout from "../components/Layout";
@@ -67,10 +68,9 @@ export default function SettingsPage() {
       setError("");
       setSuccess("");
 
-      // This would require a change-password endpoint on the backend
-      // For now, we'll show an info message
+      // NOTE: backend does not yet expose a change-password endpoint.
       setError(
-        "Password change endpoint needs to be implemented on the backend"
+        "Password change endpoint is not implemented on the backend yet. Please update your password via admin for now."
       );
 
       setPasswordData({
@@ -84,6 +84,20 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  const roleLabel = (
+    currentUser?.role?.name ||
+    currentUser?.roleName ||
+    (typeof currentUser?.role === "string" ? currentUser.role : "")
+  )
+    ?.toString()
+    .toUpperCase();
+
+  const branchLabel =
+    currentUser?.branch?.name ||
+    (currentUser?.branch_id
+      ? `Branch #${currentUser.branch_id}`
+      : "No branch assigned");
 
   return (
     <Layout>
@@ -173,7 +187,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      value={currentUser?.role?.name?.toUpperCase() || ""}
+                      value={roleLabel || ""}
                       disabled
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                     />
@@ -188,7 +202,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
-                      value={currentUser?.branch?.name || "No branch assigned"}
+                      value={branchLabel}
                       disabled
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                     />
