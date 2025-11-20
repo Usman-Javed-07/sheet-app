@@ -218,31 +218,38 @@ exports.deleteCell = async (req, res) => {
 
 // Helper function to check cell edit access
 async function checkCellEditAccess(userId, sheetId, userRole) {
-  const sheet = await Sheet.findByPk(sheetId, { include: ["User"] });
-
+  // 1) Load the sheet (no includes with invalid aliases)
+  const sheet = await Sheet.findByPk(sheetId);
   if (!sheet) return false;
 
+  // 2) Admins can edit everything
   if (userRole === "admin") return true;
+
+  // 3) Sheet creator always has edit access
+  if (sheet.created_by === userId) return true;
+
+  // 4) Load the user to check branch/team based permissions if needed
+  const user = await User.findByPk(userId);
+  if (!user) return false;
+
+  // Managers: can edit sheets in their own branch
   if (userRole === "manager") {
-    const user = await User.findByPk(userId);
-    return sheet.branch_id === user.branch_id;
-  }
-  if (userRole === "team_lead") {
-    const user = await User.findByPk(userId);
-    return sheet.team_id === user.team_id;
-  }
-  if (userRole === "user") {
-    const share = await SheetShare.findOne({
-      where: {
-        sheet_id: sheetId,
-        shared_with_user_id: userId,
-        permission_level: "edit",
-      },
-    });
-    return !!share;
+    if (sheet.branch_id && user.branch_id && sheet.branch_id === user.branch_id) {
+      return true;
+    }
   }
 
-  return false;
+  // 5) For shared sheets, check SheetShare with "edit" permission
+  const share = await SheetShare.findOne({
+    where: {
+      sheet_id: sheetId,
+      shared_with_user_id: userId,
+      permission_level: "edit",
+    },
+  });
+
+  return !!share;
 }
+
 
 module.exports = exports;

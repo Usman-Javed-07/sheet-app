@@ -95,6 +95,7 @@ exports.getUserById = async (req, res) => {
 };
 
 // Create user
+// Create user (Admin/Manager)
 exports.createUser = async (req, res) => {
   try {
     const {
@@ -105,66 +106,70 @@ exports.createUser = async (req, res) => {
       role_id,
       branch_id,
       team_id,
+      password,     // ✅ NEW optional password
     } = req.body;
 
     // Validate input
     if (!username || !email || !role_id) {
       return res
         .status(400)
-        .json({ success: false, message: "Missing required fields" });
+        .json({ success: false, message: "Username, email and role are required" });
     }
 
-    // Check user role permissions
+    // Check for duplicates
+    const existing = await User.findOne({
+      where: {
+        [Op.or]: [{ username }, { email }],
+      },
+    });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "Username or email already exists",
+      });
+    }
+
+    // Find role object
     const roleToCreate = await Role.findByPk(role_id);
     if (!roleToCreate) {
       return res.status(400).json({ success: false, message: "Invalid role" });
     }
 
-    // Permission checks
+    // Role-based permissions (admin vs manager)
     if (req.userRole === "manager") {
-      // Manager can only create user, agent, team_lead
+      // Manager can only create limited roles
       if (!["user", "agent", "team_lead"].includes(roleToCreate.name)) {
         return res
           .status(403)
           .json({ success: false, message: "Cannot create this role" });
       }
-      // Manager can only create users in their branch
+
+      // Manager can only create in their own branch
       if (branch_id && branch_id !== req.user.branch_id) {
-        return res
-          .status(403)
-          .json({
-            success: false,
-            message: "Can only create users in your branch",
-          });
+        return res.status(403).json({
+          success: false,
+          message: "Can only create users in your branch",
+        });
       }
-    } else if (req.userRole !== "admin") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Insufficient permissions" });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User already exists" });
+    // ✅ Decide final password (user-specified or generated)
+    let plainPassword = password;
+    if (!plainPassword) {
+      plainPassword = crypto.randomBytes(8).toString("hex"); // fallback temp password
     }
 
-    // Generate temporary password
-    const tempPassword = crypto.randomBytes(8).toString("hex");
-
-    // Create user
-    const newUser = await User.create({
+    // Create the user (hooks will hash password_hash)
+    const user = await User.create({
       username,
       email,
       first_name,
       last_name,
-      password_hash: tempPassword,
       role_id,
-      branch_id:
-        branch_id || (req.userRole === "manager" ? req.user.branch_id : null),
-      team_id,
+      branch_id: branch_id || null,
+      team_id: team_id || null,
+      password_hash: plainPassword,
+      is_active: true,
     });
 
     // Log activity
@@ -172,42 +177,45 @@ exports.createUser = async (req, res) => {
       req.user.id,
       "user_created",
       "User",
-      newUser.id,
+      user.id,
       null,
-      { username, email, role_id },
+      { username, email, role_id, branch_id, team_id },
       req.ip,
       req.get("user-agent")
     );
 
-    // Create notification
+    // Optional: create notification for the new user
     await createNotification(
-      newUser.id,
+      user.id,
       req.user.id,
       "user_created",
-      "Account Created",
       "Your account has been created",
+      `An account has been created for you with username ${username}`,
       "User",
-      newUser.id
+      user.id
     );
 
-    // Send email
-    await sendUserCreatedEmail(
-      email,
-      username,
-      tempPassword,
-      req.user.username
-    );
+    // Send email with credentials
+    try {
+      await sendUserCreatedEmail(user.email, {
+        username: user.username,
+        password: plainPassword, // ✅ Always send the actual password
+      });
+    } catch (emailErr) {
+      console.error("Failed to send user created email:", emailErr);
+    }
 
     res.status(201).json({
       success: true,
       message: "User created successfully",
-      data: newUser,
+      data: user,
     });
   } catch (error) {
     console.error("Error creating user:", error);
     res.status(500).json({ success: false, message: "Failed to create user" });
   }
 };
+
 
 // Update user
 exports.updateUser = async (req, res) => {
